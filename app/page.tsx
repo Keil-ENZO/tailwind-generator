@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { useEffect, useRef, useState } from "react";
 
@@ -39,15 +39,13 @@ export default function Home() {
     if (loading) return;
 
     const formData = new FormData(event.currentTarget);
-
-    const prompt = formData.get("prompt") as string;
+    const userPrompt = formData.get("prompt") as string;
 
     setLoading(true);
-    setHtmlCode("");
 
     const newMessages: ChatCompletionMessageParam[] = [
       ...messages,
-      { content: prompt, role: "user" },
+      { content: userPrompt, role: "user" },
     ];
 
     setMessages(newMessages);
@@ -57,7 +55,7 @@ export default function Home() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ prompt: String(prompt) }),
+      body: JSON.stringify({ messages: newMessages }),
     });
 
     const body = await result.text();
@@ -69,7 +67,13 @@ export default function Home() {
 
     setHtmlCode(body);
     setLoading(false);
-    console.log("Prompt:", prompt);
+
+    setMessages((current) => [
+      ...current,
+      { content: body, role: "assistant" },
+    ]);
+
+    console.log("User Prompt:", userPrompt);
   };
 
   return (
@@ -101,25 +105,40 @@ export default function Home() {
 
       <div className="fixed bottom-4 left-0 right-0 flex items-center justify-center">
         <div className="p-4 bg-base-200 max-w-lg w-full rounded-lg shadow-xl">
-          <div className="max-w-full overflow-auto flex flex-col gap-1" style={{maxHeight: 200}}>
-          {messages.filter(m => m.role === "user").map((message, index) => (
-            <div key={index}>
-              You: {String(message.content)}
-             
-            </div>
-          ))}
+          <div
+            className="max-w-full overflow-auto flex flex-col gap-1"
+            style={{ maxHeight: 200 }}
+          >
+            {messages
+              .filter((m) => m.role === "user")
+              .map((message, index) => (
+                <div key={index}>You: {String(message.content)}</div>
+              ))}
           </div>
-        <form onSubmit={handleSubmit}>
-          <fieldset className="flex items-start gap-4">
-            <textarea
-              name="prompt"
-              className="textarea textarea-primary w-full"
-            />
-            <button className="btn btn-primary btn-sm" type="submit">
-              <Sparkles size={20} />
-            </button>
-          </fieldset>
-        </form>
+          <form onSubmit={handleSubmit}>
+            <fieldset className="flex items-start gap-4">
+              <textarea
+                name="prompt"
+                className="textarea textarea-primary w-full"
+              />
+              <div className="flex flex-col gap-1">
+                <button className="btn btn-primary btn-sm" type="submit">
+                  <Sparkles size={20} />
+                </button>
+
+                <button
+                  className="btn btn-neutral btn-sm"
+                  type="button"
+                  onClick={() => {
+                    setHtmlCode("");
+                    setMessages([]);
+                  }}
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            </fieldset>
+          </form>
         </div>
       </div>
     </main>

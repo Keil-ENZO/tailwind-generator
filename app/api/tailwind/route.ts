@@ -1,5 +1,7 @@
 import { openai } from "@/src/lib/openai";
 import { OpenAIStream, StreamingTextResponse } from "ai";
+import { ChatCompletionMessageParam } from "ai/prompts";
+import { ChatCompletion } from "openai/resources/index.mjs";
 
 const systemPrompt = `
 Context: You are TailwindGPT3, an Ai text generator that writes Tailwind code.
@@ -20,22 +22,26 @@ Response format:
 * You never add "\`\`\`" before or after the html code
 * You NEVER add any html comments
 * When you use "img" tag , you always use this Image: https://picsum.photos/200/300 
-`
+`;
+
+let context = systemPrompt;
 
 export const POST = async (req: Request) => {
-  const { prompt } = await req.json();
+  const { messages } = (await req.json()) as {
+    messages: ChatCompletionMessageParam[];
+  };
+
+  const userMessages = messages.filter((msg) => msg.role === "user");
+  const userPrompt = userMessages.map((msg) => msg.content).join("\n");
 
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
-    stream: true,
-    messages: [
-      { role: "assistant", content: systemPrompt },
-      { role: "user", content: prompt }, // Assurez-vous que prompt est une chaîne
-    ],
+    messages: [{ role: "assistant", content: context }, ...userMessages],
   });
 
-  const stream = OpenAIStream(response);
+  context = `${context}\n${userPrompt}`;
 
-  return new StreamingTextResponse(stream);
+  return new StreamingTextResponse(response.data.choices[0].message.content);
 };
+
 
